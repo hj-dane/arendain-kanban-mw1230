@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Board — Task Board</title>
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<div class="app">
+  <aside class="sidebar">
+    <div class="brand">Task<span>Board</span></div>
+    <nav>
+      <a href="index.html">Dashboard</a>
+      <a href="board.html" class="active">Board</a>
+      <a href="task-form.html">Add task</a>
+    </nav>
+  </aside>
+
+  <main>
+    <div class="page-header">
+      <div>
+        <h1>Board</h1>
+        <p>View, edit, and delete tasks across each stage.</p>
+      </div>
+      <a href="task-form.html" class="btn">+ New task</a>
+    </div>
+
+    <div class="board">
+      <div class="column">
+        <div class="column-header">
+          <span class="dot todo"></span>
+          <h2>To do</h2>
+          <span class="n" id="n-todo"></span>
+        </div>
+        <div id="col-todo"></div>
+      </div>
+      <div class="column">
+        <div class="column-header">
+          <span class="dot progress"></span>
+          <h2>In progress</h2>
+          <span class="n" id="n-progress"></span>
+        </div>
+        <div id="col-progress"></div>
+      </div>
+      <div class="column">
+        <div class="column-header">
+          <span class="dot done"></span>
+          <h2>Done</h2>
+          <span class="n" id="n-done"></span>
+        </div>
+        <div id="col-done"></div>
+      </div>
+    </div>
+  </main>
+</div>
+
+<script>
+  async function loadBoard() {
+    const response = await fetch("/api/tasks");
+    const tasks = await response.json();
+
+    ["todo", "progress", "done"].forEach(status => {
+      const items = tasks.filter(t => t.status === status);
+      const col = document.getElementById(`col-${status}`);
+
+      document.getElementById(`n-${status}`).textContent = items.length;
+      col.innerHTML = "";
+
+      if (items.length === 0) {
+        col.innerHTML = `<div class="empty-col">No tasks</div>`;
+        return;
+      }
+
+      items.forEach(t => {
+        col.innerHTML += `
+          <div class="card">
+            <div class="title">${t.title}</div>
+            <div class="desc">${t.description || ""}</div>
+            <select class="status-select" onchange="changeStatus(${t.id}, this.value)">
+              <option value="todo" ${t.status === "todo" ? "selected" : ""}>To do</option>
+              <option value="progress" ${t.status === "progress" ? "selected" : ""}>In progress</option>
+              <option value="done" ${t.status === "done" ? "selected" : ""}>Done</option>
+            </select>
+            <div class="meta">
+              <span class="owner">${t.owner}</span>
+              <div class="actions">
+                <a class="btn secondary small" href="task-form.html?id=${t.id}">Edit</a>
+                <button class="btn danger small" onclick="deleteTask(${t.id})">Delete</button>
+              </div>
+            </div>
+          </div>
+        `;
+      });
+    });
+  }
+
+  async function changeStatus(id, status) {
+    await fetch(`/api/tasks/${id}/status`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ status: status })
+    });
+
+    loadBoard();
+  }
+
+  async function deleteTask(id) {
+    if (!confirm("Delete this task?")) return;
+
+    await fetch(`/api/tasks/${id}`, { method: "DELETE" });
+
+    loadBoard();
+  }
+
+  loadBoard();
+</script>
+</body>
+</html>

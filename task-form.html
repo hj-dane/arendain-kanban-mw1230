@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Add/Edit task — Task Board</title>
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<div class="app">
+  <aside class="sidebar">
+    <div class="brand">Task<span>Board</span></div>
+    <nav>
+      <a href="index.html">Dashboard</a>
+      <a href="board.html">Board</a>
+      <a href="task-form.html" class="active">Add task</a>
+    </nav>
+  </aside>
+
+  <main>
+    <div class="page-header">
+      <div>
+        <h1 id="form-title">Add task</h1>
+        <p id="form-subtitle">Create a new task on the board.</p>
+      </div>
+    </div>
+
+    <form class="form-panel" id="task-form">
+      <div class="field">
+        <label for="title">Title</label>
+        <input type="text" id="title" required placeholder="e.g. Design login page">
+      </div>
+      <div class="field">
+        <label for="description">Description</label>
+        <textarea id="description" placeholder="What needs to happen"></textarea>
+      </div>
+      <div class="field">
+        <label for="owner">Owner</label>
+        <input type="text" id="owner" required placeholder="Who's doing this">
+      </div>
+      <div class="field">
+        <label for="status">Status</label>
+        <select id="status">
+          <option value="todo">To do</option>
+          <option value="progress">In progress</option>
+          <option value="done">Done</option>
+        </select>
+      </div>
+      <div class="form-actions">
+        <button type="submit" class="btn" id="submit-btn">Save task</button>
+        <a href="board.html" class="btn secondary">Cancel</a>
+      </div>
+    </form>
+  </main>
+</div>
+
+<script>
+  const params = new URLSearchParams(window.location.search);
+  const editId = params.get("id");
+
+  async function loadTask() {
+    const response = await fetch(`/api/tasks/${editId}`);
+    if (!response.ok) return;
+
+    const task = await response.json();
+
+    document.getElementById("form-title").textContent = "Edit task";
+    document.getElementById("form-subtitle").textContent = "Update the details below.";
+    document.getElementById("submit-btn").textContent = "Save changes";
+    document.getElementById("title").value = task.title;
+    document.getElementById("description").value = task.description;
+    document.getElementById("owner").value = task.owner;
+    document.getElementById("status").value = task.status;
+  }
+
+  if (editId) loadTask();
+
+  document.getElementById("task-form").addEventListener("submit", async (e) => {
+    e.preventDefault();
+
+    const task = {
+      title: document.getElementById("title").value.trim(),
+      description: document.getElementById("description").value.trim(),
+      owner: document.getElementById("owner").value.trim(),
+      status: document.getElementById("status").value
+    };
+
+    const url = editId ? `/api/tasks/${editId}` : "/api/tasks";
+    const method = editId ? "PUT" : "POST";
+
+    const response = await fetch(url, {
+      method: method,
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(task)
+    });
+
+    const result = await response.json();
+
+    if (!response.ok) {
+      alert(result.message);
+      return;
+    }
+
+    window.location.href = "board.html";
+  });
+</script>
+</body>
+</html>

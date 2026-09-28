@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dashboard — Task Board</title>
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<div class="app">
+  <aside class="sidebar">
+    <div class="brand">Task<span>Board</span></div>
+    <nav>
+      <a href="index.html" class="active">Dashboard</a>
+      <a href="board.html">Board</a>
+      <a href="task-form.html">Add task</a>
+    </nav>
+  </aside>
+
+  <main>
+    <div class="page-header">
+      <div>
+        <h1>Dashboard</h1>
+        <p>Overview of where every task stands right now.</p>
+      </div>
+      <a href="task-form.html" class="btn">+ New task</a>
+    </div>
+
+    <div class="stats" id="stats"></div>
+
+    <h2 style="font-size:15px; margin-bottom:12px; color:var(--text-dim);">Recent tasks</h2>
+    <div class="recent-list" id="recent"></div>
+  </main>
+</div>
+
+<script>
+  const STATUS_LABEL = { todo: "To do", progress: "In progress", done: "Done" };
+
+  async function loadDashboard() {
+    const response = await fetch("/api/tasks");
+    const tasks = await response.json();
+
+    const count = status => tasks.filter(t => t.status === status).length;
+
+    document.getElementById("stats").innerHTML = `
+      <div class="stat-card todo">
+        <div class="count">${count("todo")}</div>
+        <div class="label">To do</div>
+      </div>
+      <div class="stat-card progress">
+        <div class="count">${count("progress")}</div>
+        <div class="label">In progress</div>
+      </div>
+      <div class="stat-card done">
+        <div class="count">${count("done")}</div>
+        <div class="label">Done</div>
+      </div>
+    `;
+
+    const recent = document.getElementById("recent");
+    recent.innerHTML = "";
+
+    if (tasks.length === 0) {
+      recent.innerHTML = `<div class="row">No tasks yet.</div>`;
+      return;
+    }
+
+    tasks.slice(-5).reverse().forEach(t => {
+      recent.innerHTML += `
+        <div class="row">
+          <span class="dot ${t.status}"></span>
+          <span class="title">${t.title}</span>
+          <span class="owner">${t.owner} · ${STATUS_LABEL[t.status]}</span>
+        </div>
+      `;
+    });
+  }
+
+  loadDashboard();
+</script>
+</body>
+</html>

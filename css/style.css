@@ -12,6 +12,7 @@
   --todo: #8b92a0;
   --progress: #e0a84b;
   --done: #5fb88a;
+  --archived: #c75c5c;
   --danger: #e0645a;
   --radius: 6px;
 }
@@ -122,10 +123,9 @@ main {
 
 .btn.small { padding: 5px 9px; font-size: 12px; }
 
-/* Dashboard stat cards */
 .stats {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(4, 1fr);
   gap: 16px;
   margin-bottom: 32px;
 }
@@ -152,6 +152,7 @@ main {
 .stat-card.todo .count { color: var(--todo); }
 .stat-card.progress .count { color: var(--progress); }
 .stat-card.done .count { color: var(--done); }
+.stat-card.archived .count { color: var(--archived); }
 
 .recent-list {
   background: var(--panel);
@@ -185,7 +186,6 @@ main {
 .row .title { flex: 1; }
 .row .owner { color: var(--text-dim); font-size: 13px; }
 
-/* Kanban board */
 .board {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
@@ -260,7 +260,6 @@ main {
   padding: 20px 0;
 }
 
-/* Form */
 .form-panel {
   background: var(--panel);
   border: 1px solid var(--border);
@@ -308,7 +307,7 @@ main {
 }
 
 .status-select {
-  width: 30%;
+  width: 100%;
   background: var(--bg);
   border: 1px solid var(--border);
   border-radius: var(--radius);
@@ -323,4 +322,91 @@ main {
 .status-select:focus {
   outline: 2px solid var(--accent);
   outline-offset: 1px;
+}
+
+.filters {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 24px;
+  flex-wrap: nowrap;
+}
+
+.field-inline {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 6px;
+}
+
+.field-inline label {
+  font-size: 13px;
+  color: var(--text-dim);
+  white-space: nowrap;
+}
+
+.field-inline input[type="date"] {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  color: var(--text);
+  padding: 8px 10px;
+  font-family: 'Inter', sans-serif;
+  font-size: 13px;
+}
+
+.stat-card {
+  cursor: pointer;
+  transition: border-color 0.15s ease;
+}
+
+.stat-card:hover { border-color: var(--accent); }
+
+.stat-card.active {
+  border-color: var(--accent);
+  background: var(--panel-raised);
+}
+
+.stat-card .pct {
+  color: var(--text-dim);
+  font-size: 13px;
+  margin-top: 2px;
+}
+
+.section-title {
+  font-size: 15px;
+  margin: 28px 0 12px;
+  color: var(--text-dim);
+}
+
+.list-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.list-header .section-title { margin: 28px 0 12px; }
+
+.archive-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.select-all {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  color: var(--text-dim);
+  cursor: pointer;
+}
+
+.row-check {
+  cursor: pointer;
+}
+
+.recent-list .row {
+  gap: 10px;
 }

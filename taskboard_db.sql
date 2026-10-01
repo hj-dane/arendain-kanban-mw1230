@@ -1,4 +1,5 @@
 -- Task Board (Kanban) database
+-- Re-importing this file resets the table (DROP + CREATE), so existing edits will be lost.
 -- Import via phpMyAdmin (Import tab) or: mysql -u root < taskboard_db.sql
 
 CREATE DATABASE IF NOT EXISTS taskboard_db;
@@ -11,7 +12,17 @@ CREATE TABLE tasks (
     title VARCHAR(150) NOT NULL,
     description VARCHAR(255),
     owner VARCHAR(100) NOT NULL,
-    status ENUM('todo', 'progress', 'done') NOT NULL DEFAULT 'todo'
+    status ENUM('todo', 'progress', 'done') NOT NULL DEFAULT 'todo',
+
+    -- Soft delete: DELETE /api/tasks/:id sets this to 1 instead of removing the row,
+    -- so the task shows up in the dashboard's "Archived" card/list instead of
+    -- disappearing. DELETE /api/tasks/permanent is the only route that actually
+    -- removes rows (and only rows where archived = 1), for the "delete permanently"
+    -- option in the Archived view.
+    archived TINYINT(1) NOT NULL DEFAULT 0,
+
+    -- Used by the dashboard's From/To date filters (GET /api/tasks?from=&to=)
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
 -- Data moved over from js/data.js

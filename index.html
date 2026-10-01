@@ -26,54 +26,206 @@
       <a href="task-form.html" class="btn">+ New task</a>
     </div>
 
+    <div class="filters">
+      <div class="field-inline">
+        <label for="fromDate">From</label>
+        <input type="date" id="fromDate">
+      </div>
+      <div class="field-inline">
+        <label for="toDate">To</label>
+        <input type="date" id="toDate">
+      </div>
+      <button class="btn secondary small" onclick="applyFilters()">Apply</button>
+      <button class="btn secondary small" onclick="clearFilters()">Clear</button>
+    </div>
+
     <div class="stats" id="stats"></div>
 
-    <h2 style="font-size:15px; margin-bottom:12px; color:var(--text-dim);">Recent tasks</h2>
-    <div class="recent-list" id="recent"></div>
+    <div class="list-header">
+      <h2 class="section-title" id="list-title">Recent tasks</h2>
+      <div class="archive-toolbar" id="archiveToolbar" style="display:none;">
+        <label class="select-all">
+          <input type="checkbox" id="selectAllBox" onchange="toggleSelectAll(this.checked)">
+          Select all
+        </label>
+        <button class="btn danger small" id="deleteSelectedBtn" disabled onclick="deleteSelected()">
+          Delete permanently
+        </button>
+      </div>
+    </div>
+    <div class="recent-list" id="taskList"></div>
   </main>
 </div>
 
 <script>
-  const STATUS_LABEL = { todo: "To do", progress: "In progress", done: "Done" };
+  const STATUS_LABEL = { todo: "To do", progress: "In progress", done: "Done", archived: "Archived" };
+  let allTasks = [];
+  let allArchived = [];
+  let selectedStatus = null;
+  let selectedIds = new Set();
 
   async function loadDashboard() {
-    const response = await fetch("/api/tasks");
-    const tasks = await response.json();
+    const from = document.getElementById("fromDate").value;
+    const to = document.getElementById("toDate").value;
 
-    const count = status => tasks.filter(t => t.status === status).length;
+    const params = new URLSearchParams();
+    if (from) params.set("from", from);
+    if (to) params.set("to", to);
+
+    const [activeRes, archivedRes] = await Promise.all([
+      fetch(`/api/tasks?${params.toString()}`),
+      fetch("/api/tasks/archived")
+    ]);
+
+    allTasks = await activeRes.json();
+    allArchived = await archivedRes.json();
+    selectedIds.clear();
+
+    renderStats();
+    renderList();
+  }
+
+  function renderStats() {
+    const total = allTasks.length;
+    const count = status => allTasks.filter(t => t.status === status).length;
+    const pct = n => total ? Math.round((n / total) * 100) : 0;
+
+    const todo = count("todo");
+    const progress = count("progress");
+    const done = count("done");
 
     document.getElementById("stats").innerHTML = `
-      <div class="stat-card todo">
-        <div class="count">${count("todo")}</div>
-        <div class="label">To do</div>
+      <div class="stat-card todo ${selectedStatus === 'todo' ? 'active' : ''}" onclick="selectStatus('todo')">
+        <div class="count">${todo}</div>
+        <div class="pct">${pct(todo)}%</div>
+        <div class="label">New / To do</div>
       </div>
-      <div class="stat-card progress">
-        <div class="count">${count("progress")}</div>
+      <div class="stat-card progress ${selectedStatus === 'progress' ? 'active' : ''}" onclick="selectStatus('progress')">
+        <div class="count">${progress}</div>
+        <div class="pct">${pct(progress)}%</div>
         <div class="label">In progress</div>
       </div>
-      <div class="stat-card done">
-        <div class="count">${count("done")}</div>
+      <div class="stat-card done ${selectedStatus === 'done' ? 'active' : ''}" onclick="selectStatus('done')">
+        <div class="count">${done}</div>
+        <div class="pct">${pct(done)}%</div>
         <div class="label">Done</div>
       </div>
+      <div class="stat-card archived ${selectedStatus === 'archived' ? 'active' : ''}" onclick="selectStatus('archived')">
+        <div class="count">${allArchived.length}</div>
+        <div class="pct">&nbsp;</div>
+        <div class="label">Archived</div>
+      </div>
     `;
+  }
 
-    const recent = document.getElementById("recent");
-    recent.innerHTML = "";
+  function selectStatus(status) {
+    selectedStatus = selectedStatus === status ? null : status;
+    selectedIds.clear();
+    renderStats();
+    renderList();
+  }
+
+  function renderList() {
+    const listTitle = document.getElementById("list-title");
+    const list = document.getElementById("taskList");
+    const toolbar = document.getElementById("archiveToolbar");
+    const isArchiveView = selectedStatus === "archived";
+
+    toolbar.style.display = isArchiveView ? "flex" : "none";
+
+    let tasks;
+    if (isArchiveView) {
+      listTitle.textContent = "Archived tasks";
+      tasks = allArchived;
+    } else if (selectedStatus) {
+      listTitle.textContent = `${STATUS_LABEL[selectedStatus]} tasks`;
+      tasks = allTasks.filter(t => t.status === selectedStatus);
+    } else {
+      listTitle.textContent = "Recent tasks";
+      tasks = allTasks.slice(0, 5);
+    }
+
+    list.innerHTML = "";
 
     if (tasks.length === 0) {
-      recent.innerHTML = `<div class="row">No tasks yet.</div>`;
+      list.innerHTML = `<div class="row">No tasks found.</div>`;
+      if (isArchiveView) updateDeleteButton();
       return;
     }
 
-    tasks.slice(-5).reverse().forEach(t => {
-      recent.innerHTML += `
+    tasks.forEach(t => {
+      const checkbox = isArchiveView
+        ? `<input type="checkbox" class="row-check" data-id="${t.id}" onchange="toggleSelect(${t.id}, this.checked)">`
+        : "";
+
+      list.innerHTML += `
         <div class="row">
+          ${checkbox}
           <span class="dot ${t.status}"></span>
           <span class="title">${t.title}</span>
-          <span class="owner">${t.owner} · ${STATUS_LABEL[t.status]}</span>
+          <span class="owner">${t.owner} · ${isArchiveView ? "was " : ""}${STATUS_LABEL[t.status]}</span>
         </div>
       `;
     });
+
+    if (isArchiveView) updateDeleteButton();
+  }
+
+  function toggleSelect(id, checked) {
+    if (checked) selectedIds.add(id);
+    else selectedIds.delete(id);
+
+    const allChecked = allArchived.length > 0 && selectedIds.size === allArchived.length;
+    document.getElementById("selectAllBox").checked = allChecked;
+
+    updateDeleteButton();
+  }
+
+  function toggleSelectAll(checked) {
+    selectedIds.clear();
+    if (checked) allArchived.forEach(t => selectedIds.add(t.id));
+
+    document.querySelectorAll(".row-check").forEach(box => {
+      box.checked = checked;
+    });
+
+    updateDeleteButton();
+  }
+
+  function updateDeleteButton() {
+    const btn = document.getElementById("deleteSelectedBtn");
+    btn.disabled = selectedIds.size === 0;
+    btn.textContent = selectedIds.size > 0
+      ? `Delete permanently (${selectedIds.size})`
+      : "Delete permanently";
+  }
+
+  async function deleteSelected() {
+    if (selectedIds.size === 0) return;
+
+    const ok = confirm(
+      `Permanently delete ${selectedIds.size} task(s)? This cannot be undone.`
+    );
+    if (!ok) return;
+
+    await fetch("/api/tasks/permanent", {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ ids: Array.from(selectedIds) })
+    });
+
+    selectedIds.clear();
+    loadDashboard();
+  }
+
+  function applyFilters() {
+    loadDashboard();
+  }
+
+  function clearFilters() {
+    document.getElementById("fromDate").value = "";
+    document.getElementById("toDate").value = "";
+    loadDashboard();
   }
 
   loadDashboard();
